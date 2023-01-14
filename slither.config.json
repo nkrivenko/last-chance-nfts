@@ -1,0 +1,4 @@
+{
+    "filter_paths": "(mocks/|node_modules/)",
+    "detectors_to_exclude": "similar-names,timestamp,conformance-to-solidity-naming-conventions"
+}

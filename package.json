@@ -1,0 +1,27 @@
+{
+  "name": "last-chance-nft-cards",
+  "version": "1.0.0",
+  "description": "NFTs for the \"Last chance\" game",
+  "main": "index.js",
+  "scripts": {
+    "test": "npx hardhat test",
+    "lint": "npx solhint ./contracts/**/*.sol",
+    "coverage": "npx hardhat coverage",
+    "test:gas": "REPORT_GAS=true npx hardhat test",
+    "generate:types": "npx hardhat typechain"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/nkrivenko/last-chance-nfts.git"
+  },
+  "author": "Nikolai Krivenko",
+  "license": "UNLICENSED",
+  "bugs": {
+    "url": "https://github.com/nkrivenko/last-chance-nfts/issues"
+  },
+  "homepage": "https://github.com/nkrivenko/last-chance-nfts#readme",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^2.0.1",
+    "hardhat": "^2.12.6"
+  }
+}
