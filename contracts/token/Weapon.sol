@@ -38,7 +38,7 @@ contract Weapon is Card {
         emit LevelUp(tokenId, newLevel);
     }
 
-    function upgradeEnemiesHit(uint256 tokenId, uint248 newEnemiesHit) public onlyRole(ROLE_OPERATOR) {
+    function updateEnemiesHit(uint256 tokenId, uint248 newEnemiesHit) public onlyRole(ROLE_OPERATOR) {
         require(_mutableParameters[tokenId].level > 0, "Weapon: token with given ID does not exist");
 
         WeaponMutableParameters storage params = _mutableParameters[tokenId];
@@ -47,6 +47,18 @@ contract Weapon is Card {
         params.enemiesHit = newEnemiesHit;
 
         emit NewEnemiesHit(tokenId, newEnemiesHit);
+    }
+
+    function update(uint256 tokenId, WeaponMutableParameters calldata parameters) public onlyRole(ROLE_OPERATOR) {
+        require(_mutableParameters[tokenId].level > 0, "Weapon: token with given ID does not exist");
+
+        WeaponMutableParameters storage params = _mutableParameters[tokenId];
+        
+        require(params.level < parameters.level, "Weapon: cannot decrease level");
+        require(params.enemiesHit < parameters.enemiesHit, "Weapon: cannot decrease the number of enemies hit");
+
+        params.level = parameters.level;
+        params.enemiesHit = parameters.enemiesHit;
     }
 
     function _doSafeMint(uint256 tokenId) internal virtual override {
