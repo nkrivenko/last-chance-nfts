@@ -26,6 +26,7 @@ jobs:
         run: |
           touch .env
           echo PRIVATE_KEY=${{ secrets.PRIVATE_KEY }} >> .env
+          echo COINMARKETCAP=${{ secrets.COINMARKETCAP_KEY }} >> .env
       
       - name: "Run linter"
         run: "npm run lint"
@@ -35,3 +36,6 @@ jobs:
 
       - name: "Test the contracts"
         run: "npm test"
+      
+      - name: "Check the gas usage of the contracts"
+        run: "npm run test:gas"

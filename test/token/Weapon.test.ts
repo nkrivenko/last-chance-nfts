@@ -13,16 +13,20 @@ describe('Weapon', () => {
     let operator: SignerWithAddress;
     let tokenOwner: SignerWithAddress;
 
+    const MAX_LEVEL = 40;
+
     beforeEach(async () => {
         cut = await ethers.getContractFactory("Weapon")
             .then(factory => upgrades.deployProxy(factory, [], {initializer: "initialize"}));
         
         [ admin, operator, tokenOwner ] = await ethers.getSigners();
 
+        await cut.addNewTokenType(1, {name: "First weapon", maxLevel: MAX_LEVEL, rarity: 0, improvementSlots: 1});
+
         await Promise.all(
             [
                 cut.connect(admin).grantRole(ROLE_OPERATOR, operator.address), 
-                cut.safeMint(tokenOwner.address)
+                cut.safeMint(tokenOwner.address, 1)
             ]
         )
     });
@@ -43,7 +47,6 @@ describe('Weapon', () => {
 
     describe('Level up', () => {
         const EXPECTED_LEVEL = 5;
-        const MAX_LEVEL = 40;
 
         it('should level up if called by operator', async () => {
             await cut.connect(operator).levelUp(1, EXPECTED_LEVEL);
@@ -70,7 +73,7 @@ describe('Weapon', () => {
                 .to.revertedWith("Weapon: cannot decrease level");
         });
 
-        xit('should revert if trying to exceed the weapon max level', async () => {
+        it('should revert if trying to exceed the weapon max level', async () => {
             await expect(cut.connect(operator).levelUp(1, MAX_LEVEL + 1))
                 .to.revertedWith("Weapon: cannot exceed max level");
         });
@@ -118,8 +121,6 @@ describe('Weapon', () => {
         const NEW_LEVEL = 10;
         const NEW_ENEMIES_HIT = 100;
 
-        const MAX_LEVEL = 40;
-
         it('should update all weapon mutable characteristics', async () => {
             await cut.connect(operator).update(1, {level: NEW_LEVEL, enemiesHit: NEW_ENEMIES_HIT});
             
@@ -153,8 +154,9 @@ describe('Weapon', () => {
                 .to.revertedWith("Weapon: cannot decrease level");
         });
 
-        xit('should revert if new level exceeds the max level', async () => {
-            fail('Not implemented yet');
+        it('should revert if new level exceeds the max level', async () => {
+            await expect(cut.connect(operator).update(1, {level: MAX_LEVEL + 1, enemiesHit: NEW_ENEMIES_HIT}))
+                .to.revertedWith("Weapon: cannot exceed max level");
         });
 
         it('should revert if trying to update non-existent token', async () => {

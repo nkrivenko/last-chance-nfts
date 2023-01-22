@@ -6,11 +6,19 @@ import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/ac
 
 contract Weapon is Card {
 
+    struct WeaponImmutableParameters {
+        string name;
+        Rarity rarity;
+        uint8 improvementSlots;
+        uint8 maxLevel;
+    }
+
     struct WeaponMutableParameters {
         uint248 enemiesHit;
         uint8 level;
     }
 
+    mapping (uint16 => WeaponImmutableParameters) private _immutableParameters;
     mapping (uint256 => WeaponMutableParameters) private _mutableParameters;
 
     event LevelUp(uint256 tokenId, uint8 newLevel);
@@ -31,8 +39,10 @@ contract Weapon is Card {
 
         WeaponMutableParameters storage params = _mutableParameters[tokenId];
 
+        uint16 tokenType = _tokenIdToType[tokenId];
+
         require(params.level < newLevel, "Weapon: cannot decrease level");
-        // TODO Check if max level exceeded
+        require(newLevel < _immutableParameters[tokenType].maxLevel, "Weapon: cannot exceed max level");
     
         params.level = newLevel;
         emit LevelUp(tokenId, newLevel);
@@ -53,12 +63,23 @@ contract Weapon is Card {
         require(_mutableParameters[tokenId].level > 0, "Weapon: token with given ID does not exist");
 
         WeaponMutableParameters storage params = _mutableParameters[tokenId];
+        uint16 tokenType = _tokenIdToType[tokenId];
         
         require(params.level < parameters.level, "Weapon: cannot decrease level");
+        require(parameters.level < _immutableParameters[tokenType].maxLevel, "Weapon: cannot exceed max level");
         require(params.enemiesHit < parameters.enemiesHit, "Weapon: cannot decrease the number of enemies hit");
 
         params.level = parameters.level;
         params.enemiesHit = parameters.enemiesHit;
+    }
+
+    function addNewTokenType(uint16 typeId, WeaponImmutableParameters calldata typeParams) public onlyRole(DEFAULT_ADMIN_ROLE) {
+        WeaponImmutableParameters storage params = _immutableParameters[typeId];
+
+        params.name = typeParams.name;
+        params.maxLevel = typeParams.maxLevel;
+        params.rarity = typeParams.rarity;
+        params.improvementSlots = typeParams.improvementSlots;
     }
 
     function _doSafeMint(uint256 tokenId) internal virtual override {

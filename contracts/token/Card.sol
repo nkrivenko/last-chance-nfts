@@ -19,6 +19,8 @@ abstract contract Card is Initializable, AccessControlUpgradeable, ERC721Enumera
     bytes32 internal constant ROLE_OPERATOR = keccak256("ROLE_OPERATOR");
     bytes32 internal constant ROLE_UPGRADER = keccak256("ROLE_UPGRADER");
 
+    mapping(uint256 => uint16) internal _tokenIdToType;
+
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
@@ -58,10 +60,12 @@ abstract contract Card is Initializable, AccessControlUpgradeable, ERC721Enumera
         return super.supportsInterface(interfaceId);
     }
 
-    function safeMint(address to) public {
+    function safeMint(address to, uint16 tokenType) public {
         _tokenIdCounter.increment();
         uint256 id = _tokenIdCounter.current();
         _safeMint(to, id);
+
+        _tokenIdToType[id] = tokenType;
 
         _doSafeMint(id);
     }
