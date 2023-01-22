@@ -42,9 +42,10 @@ abstract contract Card is Initializable, AccessControlUpgradeable, ERC721Enumera
     function _authorizeUpgrade(address newImplementation)
         internal
         onlyRole(ROLE_UPGRADER)
-        override {
-            // solhint-disable-prev-line no-empty-blocks
-        }
+        override 
+    {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 
     // The following functions are overrides required by Solidity.
 

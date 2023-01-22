@@ -29,7 +29,7 @@ jobs:
         run: "npm run lint"
       
       - name: "Generate TypeChain bindings"
-        run: "yarn run generate:types"
+        run: "npm run generate:types"
 
       - name: "Test the contracts and run test coverage"
         run: "npm run coverage"
