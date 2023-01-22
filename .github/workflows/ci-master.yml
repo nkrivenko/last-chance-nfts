@@ -29,7 +29,7 @@ jobs:
         run: "npm run lint"
       
       - name: "Generate TypeChain bindings"
-        run: "yarn run generate:types"
+        run: "npm run generate:types"
 
       - name: "Test the contracts and run test coverage"
         run: "npm run coverage"
@@ -37,7 +37,10 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: true
-      
+
+      - name: "Check the gas usage of the contracts"
+        run: "npm run test:gas"
+
       - name: "Run security static analysis"
         uses: crytic/slither-action@v0.2.0
         with:

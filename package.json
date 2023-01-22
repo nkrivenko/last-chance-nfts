@@ -22,6 +22,14 @@
   "homepage": "https://github.com/nkrivenko/last-chance-nfts#readme",
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^2.0.1",
-    "hardhat": "^2.12.6"
+    "@nomiclabs/hardhat-ethers": "^2.2.2",
+    "@nomiclabs/hardhat-solhint": "^3.0.0",
+    "@openzeppelin/hardhat-upgrades": "^1.22.1",
+    "dotenv": "^16.0.3",
+    "hardhat": "^2.12.6",
+    "hardhat-storage-layout": "^0.1.7"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts-upgradeable": "^4.8.1"
   }
 }
