@@ -8,9 +8,9 @@ contract Weapon is Card {
 
     struct WeaponImmutableParameters {
         string name;
-        Rarity rarity;
-        uint8 improvementSlots;
+        uint240 improvementSlots;
         uint8 maxLevel;
+        Rarity rarity;
     }
 
     struct WeaponMutableParameters {
@@ -88,4 +88,7 @@ contract Weapon is Card {
         params.enemiesHit = 0;
         params.level = 1;
     }
+
+
+    uint256[40] private __gap;
 }
