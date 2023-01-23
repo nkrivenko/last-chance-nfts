@@ -21,7 +21,6 @@ contract Weapon is Card {
     mapping (uint16 => WeaponImmutableParameters) private _immutableParameters;
     mapping (uint256 => WeaponMutableParameters) private _mutableParameters;
 
-    event LevelUp(uint256 tokenId, uint8 newLevel);
     event NewEnemiesHit(uint256 tokenId, uint248 newEnemiesHit);
 
     function initialize(string calldata name, string calldata symbol) public initializer {
