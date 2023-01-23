@@ -24,6 +24,10 @@ contract Weapon is Card {
     event LevelUp(uint256 tokenId, uint8 newLevel);
     event NewEnemiesHit(uint256 tokenId, uint248 newEnemiesHit);
 
+    function initialize(string calldata name, string calldata symbol) public initializer {
+        __Card_init(name, symbol);
+    }
+
     function level(uint256 tokenId) public view returns (uint8) {
         require(_mutableParameters[tokenId].level > 0, "Weapon: token with given ID does not exist");
         return _mutableParameters[tokenId].level;
@@ -75,11 +79,18 @@ contract Weapon is Card {
 
     function addNewTokenType(uint16 typeId, WeaponImmutableParameters calldata typeParams) public onlyRole(DEFAULT_ADMIN_ROLE) {
         WeaponImmutableParameters storage params = _immutableParameters[typeId];
+        require(params.maxLevel == 0, "Weapon: token type is already initialized");
+
+        require(typeParams.maxLevel > 0, "Weapon: maxLevel should be positive");
 
         params.name = typeParams.name;
         params.maxLevel = typeParams.maxLevel;
         params.rarity = typeParams.rarity;
         params.improvementSlots = typeParams.improvementSlots;
+    }
+
+    function tokenTypeImmutableCharacteristics(uint16 typeId) public view returns (WeaponImmutableParameters memory) {
+        return _immutableParameters[typeId];
     }
 
     function _doSafeMint(uint256 tokenId) internal virtual override {

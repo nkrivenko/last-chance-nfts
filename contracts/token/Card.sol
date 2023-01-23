@@ -26,17 +26,18 @@ abstract contract Card is Initializable, AccessControlUpgradeable, ERC721Enumera
         _disableInitializers();
     }
 
-    function initialize() public initializer {
-        __ERC721_init("MyToken", "MTK");
-        __AccessControl_init();
-        __ERC721Enumerable_init();
-        __UUPSUpgradeable_init();
+    // solhint-disable-next-line func-name-mixedcase
+    function __Card_init(string calldata name_, string calldata symbol_) internal onlyInitializing {
+        __ERC721_init_unchained(name_, symbol_);
+        __ERC721Enumerable_init_unchained();
+        __AccessControl_init_unchained();
+        __UUPSUpgradeable_init_unchained();
 
-        __Card_init();
+        __Card_init_unchained();
     }
 
     // solhint-disable-next-line func-name-mixedcase
-    function __Card_init() internal onlyInitializing {
+    function __Card_init_unchained() internal onlyInitializing {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(ROLE_UPGRADER, msg.sender);
     }
