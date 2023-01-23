@@ -21,6 +21,8 @@ abstract contract Card is Initializable, AccessControlUpgradeable, ERC721Enumera
 
     mapping(uint256 => uint16) internal _tokenIdToType;
 
+    event LevelUp(uint256 tokenId, uint8 newLevel);
+
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
