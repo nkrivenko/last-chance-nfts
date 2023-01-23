@@ -23,7 +23,7 @@ describe('Weapon', () => {
         
         [ admin, operator, tokenOwner ] = await ethers.getSigners();
 
-        await cut.addNewTokenType(1, {name: "First weapon", maxLevel: MAX_LEVEL, rarity: 0, improvementSlots: 1});
+        await cut.addNewTokenType(1, {name: "First weapon", maxLevel: MAX_LEVEL, rarity: 0, improvementSlots: 1, issueDate: +new Date()});
 
         await Promise.all(
             [
@@ -184,8 +184,10 @@ describe('Weapon', () => {
         const NEW_MAX_LEVEL = MAX_LEVEL - 2;
         const NEW_RARITY = 3;
         const NEW_IMPROVEMENT_SLOTS = 2;
+        const ISSUE_DATE = +new Date();
 
-        const SECOND_WEAPON_CHARS = {name: NEW_WEAPON_CLASS_NAME, maxLevel: NEW_MAX_LEVEL, rarity: NEW_RARITY, improvementSlots: NEW_IMPROVEMENT_SLOTS};
+        const SECOND_WEAPON_CHARS = {name: NEW_WEAPON_CLASS_NAME, maxLevel: NEW_MAX_LEVEL, rarity: NEW_RARITY,
+            improvementSlots: NEW_IMPROVEMENT_SLOTS, issueDate: ISSUE_DATE};
 
         it('should allow to add type immutable characteristics to admin', async () => {
             await cut.addNewTokenType(2, SECOND_WEAPON_CHARS);

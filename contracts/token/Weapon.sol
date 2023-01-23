@@ -8,7 +8,8 @@ contract Weapon is Card {
 
     struct WeaponImmutableParameters {
         string name;
-        uint240 improvementSlots;
+        uint240 issueDate;
+        uint8 improvementSlots;
         uint8 maxLevel;
         Rarity rarity;
     }
@@ -78,7 +79,7 @@ contract Weapon is Card {
 
     function addNewTokenType(uint16 typeId, WeaponImmutableParameters calldata typeParams) public onlyRole(DEFAULT_ADMIN_ROLE) {
         WeaponImmutableParameters storage params = _immutableParameters[typeId];
-        require(params.maxLevel == 0, "Weapon: token type is already initialized");
+        require(params.issueDate == 0, "Weapon: token type is already initialized");
 
         require(typeParams.maxLevel > 0, "Weapon: maxLevel should be positive");
 
@@ -86,6 +87,7 @@ contract Weapon is Card {
         params.maxLevel = typeParams.maxLevel;
         params.rarity = typeParams.rarity;
         params.improvementSlots = typeParams.improvementSlots;
+        params.issueDate = typeParams.issueDate;
     }
 
     function tokenTypeImmutableCharacteristics(uint16 typeId) public view returns (WeaponImmutableParameters memory) {
