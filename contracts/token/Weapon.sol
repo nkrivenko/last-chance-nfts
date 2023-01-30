@@ -24,8 +24,8 @@ contract Weapon is Card {
 
     event NewEnemiesHit(uint256 tokenId, uint248 newEnemiesHit);
 
-    function initialize(string calldata name, string calldata symbol) public initializer {
-        __Card_init(name, symbol);
+    function initialize(string calldata name, string calldata symbol, string calldata metadataURI) public initializer {
+        __Card_init(name, symbol, metadataURI);
     }
 
     function level(uint256 tokenId) public view tokenExists(tokenId) returns (uint8) {

@@ -11,7 +11,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 abstract contract Card is Initializable, AccessControlUpgradeable, ERC721EnumerableUpgradeable, UUPSUpgradeable {
 
-    using StringsUpgradeable for uint256;
+    using StringsUpgradeable for uint16;
     using CountersUpgradeable for CountersUpgradeable.Counter;
 
     CountersUpgradeable.Counter private _tokenIdCounter;
@@ -22,6 +22,8 @@ abstract contract Card is Initializable, AccessControlUpgradeable, ERC721Enumera
     bytes32 internal constant ROLE_UPGRADER = keccak256("ROLE_UPGRADER");
 
     mapping(uint256 => uint16) internal _tokenIdToType;
+
+    string private _metadataURI;
 
     event LevelUp(uint256 tokenId, uint8 newLevel);
 
@@ -36,27 +38,43 @@ abstract contract Card is Initializable, AccessControlUpgradeable, ERC721Enumera
     }
 
     // solhint-disable-next-line func-name-mixedcase
-    function __Card_init(string calldata name_, string calldata symbol_) internal onlyInitializing {
+    function __Card_init(string calldata name_, string calldata symbol_, string calldata metadataURI_) internal onlyInitializing {
         __ERC721_init_unchained(name_, symbol_);
         __ERC721Enumerable_init_unchained();
         __AccessControl_init_unchained();
         __UUPSUpgradeable_init_unchained();
 
-        __Card_init_unchained();
+        __Card_init_unchained(metadataURI_);
     }
 
     function tokenURI(uint256 tokenId) public view virtual override returns (string memory) {
         _requireMinted(tokenId);
 
+        uint16 tokenIdType = _tokenIdToType[tokenId];
         string memory baseURI = _baseURI();
-        return bytes(baseURI).length > 0 ? string(abi.encodePacked(baseURI, tokenId.toString())) : "";
+        return bytes(baseURI).length > 0 ? string(abi.encodePacked(baseURI, tokenIdType.toString(), ".json")) : "";
+    }
+
+    function setBaseURI(string calldata newBaseURI) public onlyRole(DEFAULT_ADMIN_ROLE) {
+        _metadataURI = newBaseURI;
+    }
+
+    /**
+     * @dev See {IERC721-approve}.
+     */
+    function _baseURI() internal view virtual override returns (string memory) {
+        return _metadataURI;
     }
 
     // solhint-disable-next-line func-name-mixedcase
-    function __Card_init_unchained() internal onlyInitializing {
+    function __Card_init_unchained(string calldata metadataURI_) internal onlyInitializing {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(ROLE_UPGRADER, msg.sender);
+
+        _metadataURI = metadataURI_;
     }
+
+
 
     function _authorizeUpgrade(address newImplementation)
         internal

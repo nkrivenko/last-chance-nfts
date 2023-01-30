@@ -15,20 +15,23 @@ describe('Weapon', () => {
 
     const MAX_LEVEL = 40;
     const NAME = "Prime Games Weapon";
-    const SYMBOL = "PGW"
+    const SYMBOL = "PGW";
+    const METADATA_URI = "ipfs://123/";
+
+    const TOKEN_TYPE_ID = 100;
 
     beforeEach(async () => {
         cut = await ethers.getContractFactory("Weapon")
-            .then(factory => upgrades.deployProxy(factory, [NAME, SYMBOL], {initializer: "initialize"}));
+            .then(factory => upgrades.deployProxy(factory, [NAME, SYMBOL, METADATA_URI], {initializer: "initialize"}));
         
         [ admin, operator, tokenOwner ] = await ethers.getSigners();
 
-        await cut.addNewTokenType(1, {name: "First weapon", maxLevel: MAX_LEVEL, rarity: 0, improvementSlots: 1, issueDate: +new Date()});
+        await cut.addNewTokenType(TOKEN_TYPE_ID, {name: "First weapon", maxLevel: MAX_LEVEL, rarity: 0, improvementSlots: 1, issueDate: +new Date()});
 
         await Promise.all(
             [
                 cut.connect(admin).grantRole(ROLE_OPERATOR, operator.address), 
-                cut.safeMint(tokenOwner.address, 1)
+                cut.safeMint(tokenOwner.address, TOKEN_TYPE_ID)
             ]
         )
     });
@@ -43,6 +46,7 @@ describe('Weapon', () => {
 
         expect(name).to.eq(NAME);
         expect(symbol).to.eq(SYMBOL);
+        expect(`${METADATA_URI}${TOKEN_TYPE_ID}.json`).to.eq(await cut.tokenURI(1));
     });
 
     describe('Minting process', () => {
@@ -201,7 +205,7 @@ describe('Weapon', () => {
         });
 
         it('should revert if adding the characteristics to existent type', async () => {
-            await expect(cut.addNewTokenType(1, SECOND_WEAPON_CHARS))
+            await expect(cut.addNewTokenType(100, SECOND_WEAPON_CHARS))
                 .to.revertedWith("Weapon: token type is already initialized");
         });
 
@@ -209,5 +213,20 @@ describe('Weapon', () => {
             await expect(cut.connect(operator).addNewTokenType(2, SECOND_WEAPON_CHARS))
                 .to.revertedWith(`AccessControl: account ${operator.address.toLowerCase()} is missing role ${DEFAULT_ADMIN_ROLE}`);
         });
-    })
+    });
+
+    describe('Metadata URI changing', () => {
+        const NEW_BASE_URI = "ipfs://1234567/";
+
+        it('should change base URI if called by admin', async () => {
+            await cut.setBaseURI(NEW_BASE_URI);
+
+            expect(`${NEW_BASE_URI}${TOKEN_TYPE_ID}.json`).to.eq(await cut.tokenURI(1));
+        });
+
+        it('should revert if called not by admin', async () => {
+            await expect(cut.connect(tokenOwner).setBaseURI(NEW_BASE_URI)).to
+                .revertedWith(`AccessControl: account ${tokenOwner.address.toLowerCase()} is missing role ${DEFAULT_ADMIN_ROLE}`)
+        });
+    });
 });
