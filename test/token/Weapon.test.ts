@@ -94,7 +94,7 @@ describe('Weapon', () => {
 
         it('should revert if trying to level up the nonexistent token', async () => {
             await expect(cut.connect(operator).levelUp(2, EXPECTED_LEVEL))
-                .to.revertedWith("Weapon: token with given ID does not exist");
+                .to.revertedWith("ERC721: invalid token ID");
         });
     });
 
@@ -127,7 +127,7 @@ describe('Weapon', () => {
 
         it('should revert if trying to level up the nonexistent token', async () => {
             await expect(cut.connect(operator).levelUp(2, ENEMIES_HIT))
-                .to.revertedWith("Weapon: token with given ID does not exist");
+                .to.revertedWith("ERC721: invalid token ID");
         });
     });
 
@@ -175,7 +175,7 @@ describe('Weapon', () => {
 
         it('should revert if trying to update non-existent token', async () => {
             await expect(cut.connect(operator).update(2, {level: NEW_LEVEL, enemiesHit: NEW_ENEMIES_HIT}))
-                .to.revertedWith("Weapon: token with given ID does not exist");
+                .to.revertedWith("ERC721: invalid token ID");
         });
     });
 
