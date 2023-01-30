@@ -16,19 +16,21 @@ describe('Character', () => {
     const MAX_LEVEL = 40;
     const NAME = "Prime Games Character";
     const SYMBOL = "PGC"
+    const METADATA_URI = "ipfs://123/";
+    const TOKEN_TYPE_ID = 100;
 
     beforeEach(async () => {
         cut = await ethers.getContractFactory("Character")
-            .then(factory => upgrades.deployProxy(factory, [NAME, SYMBOL], {initializer: "initialize"}));
+            .then(factory => upgrades.deployProxy(factory, [NAME, SYMBOL, METADATA_URI], {initializer: "initialize"}));
         
         [ admin, operator, tokenOwner ] = await ethers.getSigners();
 
-        await cut.addNewTokenType(1, {name: "Sir Mullich", maxLevel: MAX_LEVEL, rarity: 0, activeSkill1: 'Speed +2', activeSkill2: 'Leadership', issueDate: +new Date()});
+        await cut.addNewTokenType(TOKEN_TYPE_ID, {name: "Sir Mullich", maxLevel: MAX_LEVEL, rarity: 0, activeSkill1: 'Speed +2', activeSkill2: 'Leadership', issueDate: +new Date()});
 
         await Promise.all(
             [
                 cut.connect(admin).grantRole(ROLE_OPERATOR, operator.address), 
-                cut.safeMint(tokenOwner.address, 1)
+                cut.safeMint(tokenOwner.address, TOKEN_TYPE_ID)
             ]
         )
     });
@@ -43,8 +45,8 @@ describe('Character', () => {
 
         expect(name).to.eq(NAME);
         expect(symbol).to.eq(SYMBOL);
+        expect(`${METADATA_URI}${TOKEN_TYPE_ID}.json`).to.eq(await cut.tokenURI(1));
     });
-
 
     describe('Minting process', () => {
         it('should create the character with correct parameters', async () => {
@@ -95,7 +97,7 @@ describe('Character', () => {
 
         it('should revert if trying to level up the nonexistent token', async () => {
             await expect(cut.connect(operator).levelUp(2, EXPECTED_LEVEL))
-                .to.revertedWith("Character: token with given ID does not exist");
+                .to.revertedWith("ERC721: invalid token ID");
         });
     });
 
@@ -128,7 +130,7 @@ describe('Character', () => {
 
         it('should revert if trying to level up the nonexistent token', async () => {
             await expect(cut.connect(operator).levelUp(2, GAMES_PLAYED))
-                .to.revertedWith("Character: token with given ID does not exist");
+                .to.revertedWith("ERC721: invalid token ID");
         });
     });
 
@@ -176,7 +178,7 @@ describe('Character', () => {
 
         it('should revert if trying to update non-existent token', async () => {
             await expect(cut.connect(operator).update(2, {level: NEW_LEVEL, gamesPlayed: NEW_GAMES_PLAYED}))
-                .to.revertedWith("Character: token with given ID does not exist");
+                .to.revertedWith("ERC721: invalid token ID");
         });
     });
 
@@ -205,7 +207,7 @@ describe('Character', () => {
         });
 
         it('should revert if adding the characteristics to existent type', async () => {
-            await expect(cut.addNewTokenType(1, SECOND_CHARACTER_CHARS))
+            await expect(cut.addNewTokenType(TOKEN_TYPE_ID, SECOND_CHARACTER_CHARS))
                 .to.revertedWith("Character: token type is already initialized");
         });
 
@@ -213,5 +215,20 @@ describe('Character', () => {
             await expect(cut.connect(operator).addNewTokenType(2, SECOND_CHARACTER_CHARS))
                 .to.revertedWith(`AccessControl: account ${operator.address.toLowerCase()} is missing role ${DEFAULT_ADMIN_ROLE}`);
         });
-    })
+    });
+
+    describe('Metadata URI changing', () => {
+        const NEW_BASE_URI = "ipfs://1234567/";
+
+        it('should change base URI if called by admin', async () => {
+            await cut.setBaseURI(NEW_BASE_URI);
+
+            expect(`${NEW_BASE_URI}${TOKEN_TYPE_ID}.json`).to.eq(await cut.tokenURI(1));
+        });
+
+        it('should revert if called not by admin', async () => {
+            await expect(cut.connect(tokenOwner).setBaseURI(NEW_BASE_URI)).to
+                .revertedWith(`AccessControl: account ${tokenOwner.address.toLowerCase()} is missing role ${DEFAULT_ADMIN_ROLE}`)
+        });
+    });
 });

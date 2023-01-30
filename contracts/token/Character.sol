@@ -24,23 +24,19 @@ contract Character is Card {
 
     event NewGamesPlayed(uint256 tokenId, uint248 newGamesPlayed);
 
-    function initialize(string calldata name, string calldata symbol) public initializer {
-        __Card_init(name, symbol);
+    function initialize(string calldata name, string calldata symbol, string calldata metadataURI) public initializer {
+        __Card_init(name, symbol, metadataURI);
     }
 
-    function level(uint256 tokenId) public view returns (uint8) {
-        require(_mutableParameters[tokenId].level > 0, "Character: token with given ID does not exist");
+    function level(uint256 tokenId) public view tokenExists(tokenId) returns (uint8) {
         return _mutableParameters[tokenId].level;
     }
 
-    function gamesPlayed(uint256 tokenId) public view returns (uint248) {
-        require(_mutableParameters[tokenId].level > 0, "Character: token with given ID does not exist");
+    function gamesPlayed(uint256 tokenId) public view tokenExists(tokenId) returns (uint248) {
         return _mutableParameters[tokenId].gamesPlayed;
     }
 
-    function levelUp(uint256 tokenId, uint8 newLevel) public onlyRole(ROLE_OPERATOR) {
-        require(_mutableParameters[tokenId].level > 0, "Character: token with given ID does not exist");
-
+    function levelUp(uint256 tokenId, uint8 newLevel) public onlyRole(ROLE_OPERATOR) tokenExists(tokenId) {
         CharacterMutableParameters storage params = _mutableParameters[tokenId];
 
         uint16 tokenType = _tokenIdToType[tokenId];
@@ -52,9 +48,7 @@ contract Character is Card {
         emit LevelUp(tokenId, newLevel);
     }
 
-    function updateGamesPlayed(uint256 tokenId, uint248 newGamesPlayed) public onlyRole(ROLE_OPERATOR) {
-        require(_mutableParameters[tokenId].level > 0, "Character: token with given ID does not exist");
-
+    function updateGamesPlayed(uint256 tokenId, uint248 newGamesPlayed) public onlyRole(ROLE_OPERATOR) tokenExists(tokenId) {
         CharacterMutableParameters storage params = _mutableParameters[tokenId];
         require(params.gamesPlayed < newGamesPlayed, "Character: cannot decrease the number of games played");
 
@@ -63,9 +57,7 @@ contract Character is Card {
         emit NewGamesPlayed(tokenId, newGamesPlayed);
     }
 
-    function update(uint256 tokenId, CharacterMutableParameters calldata parameters) public onlyRole(ROLE_OPERATOR) {
-        require(_mutableParameters[tokenId].level > 0, "Character: token with given ID does not exist");
-
+    function update(uint256 tokenId, CharacterMutableParameters calldata parameters) public onlyRole(ROLE_OPERATOR) tokenExists(tokenId) {
         CharacterMutableParameters storage params = _mutableParameters[tokenId];
         uint16 tokenType = _tokenIdToType[tokenId];
         

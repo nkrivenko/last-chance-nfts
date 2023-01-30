@@ -4,12 +4,14 @@ pragma solidity 0.8.17;
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import { ERC721EnumerableUpgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
 import { CountersUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
+import { StringsUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 abstract contract Card is Initializable, AccessControlUpgradeable, ERC721EnumerableUpgradeable, UUPSUpgradeable {
 
+    using StringsUpgradeable for uint16;
     using CountersUpgradeable for CountersUpgradeable.Counter;
 
     CountersUpgradeable.Counter private _tokenIdCounter;
@@ -21,7 +23,14 @@ abstract contract Card is Initializable, AccessControlUpgradeable, ERC721Enumera
 
     mapping(uint256 => uint16) internal _tokenIdToType;
 
+    string private _metadataURI;
+
     event LevelUp(uint256 tokenId, uint8 newLevel);
+
+    modifier tokenExists(uint256 tokenId) {
+        _requireMinted(tokenId);
+        _;
+    }
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -29,20 +38,43 @@ abstract contract Card is Initializable, AccessControlUpgradeable, ERC721Enumera
     }
 
     // solhint-disable-next-line func-name-mixedcase
-    function __Card_init(string calldata name_, string calldata symbol_) internal onlyInitializing {
+    function __Card_init(string calldata name_, string calldata symbol_, string calldata metadataURI_) internal onlyInitializing {
         __ERC721_init_unchained(name_, symbol_);
         __ERC721Enumerable_init_unchained();
         __AccessControl_init_unchained();
         __UUPSUpgradeable_init_unchained();
 
-        __Card_init_unchained();
+        __Card_init_unchained(metadataURI_);
+    }
+
+    function tokenURI(uint256 tokenId) public view virtual override returns (string memory) {
+        _requireMinted(tokenId);
+
+        uint16 tokenIdType = _tokenIdToType[tokenId];
+        string memory baseURI = _baseURI();
+        return bytes(baseURI).length > 0 ? string(abi.encodePacked(baseURI, tokenIdType.toString(), ".json")) : "";
+    }
+
+    function setBaseURI(string calldata newBaseURI) public onlyRole(DEFAULT_ADMIN_ROLE) {
+        _metadataURI = newBaseURI;
+    }
+
+    /**
+     * @dev See {IERC721-approve}.
+     */
+    function _baseURI() internal view virtual override returns (string memory) {
+        return _metadataURI;
     }
 
     // solhint-disable-next-line func-name-mixedcase
-    function __Card_init_unchained() internal onlyInitializing {
+    function __Card_init_unchained(string calldata metadataURI_) internal onlyInitializing {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(ROLE_UPGRADER, msg.sender);
+
+        _metadataURI = metadataURI_;
     }
+
+
 
     function _authorizeUpgrade(address newImplementation)
         internal

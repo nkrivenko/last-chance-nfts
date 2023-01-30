@@ -24,23 +24,20 @@ contract Weapon is Card {
 
     event NewEnemiesHit(uint256 tokenId, uint248 newEnemiesHit);
 
-    function initialize(string calldata name, string calldata symbol) public initializer {
-        __Card_init(name, symbol);
+    function initialize(string calldata name, string calldata symbol, string calldata metadataURI) public initializer {
+        __Card_init(name, symbol, metadataURI);
     }
 
-    function level(uint256 tokenId) public view returns (uint8) {
-        require(_mutableParameters[tokenId].level > 0, "Weapon: token with given ID does not exist");
+    function level(uint256 tokenId) public view tokenExists(tokenId) returns (uint8) {
         return _mutableParameters[tokenId].level;
     }
 
-    function enemiesHit(uint256 tokenId) public view returns (uint248) {
+    function enemiesHit(uint256 tokenId) public view tokenExists(tokenId) returns (uint248) {
         require(_mutableParameters[tokenId].level > 0, "Weapon: token with given ID does not exist");
         return _mutableParameters[tokenId].enemiesHit;
     }
 
-    function levelUp(uint256 tokenId, uint8 newLevel) public onlyRole(ROLE_OPERATOR) {
-        require(_mutableParameters[tokenId].level > 0, "Weapon: token with given ID does not exist");
-
+    function levelUp(uint256 tokenId, uint8 newLevel) public onlyRole(ROLE_OPERATOR) tokenExists(tokenId) {
         WeaponMutableParameters storage params = _mutableParameters[tokenId];
 
         uint16 tokenType = _tokenIdToType[tokenId];
@@ -52,9 +49,7 @@ contract Weapon is Card {
         emit LevelUp(tokenId, newLevel);
     }
 
-    function updateEnemiesHit(uint256 tokenId, uint248 newEnemiesHit) public onlyRole(ROLE_OPERATOR) {
-        require(_mutableParameters[tokenId].level > 0, "Weapon: token with given ID does not exist");
-
+    function updateEnemiesHit(uint256 tokenId, uint248 newEnemiesHit) public onlyRole(ROLE_OPERATOR) tokenExists(tokenId) {
         WeaponMutableParameters storage params = _mutableParameters[tokenId];
         require(params.enemiesHit < newEnemiesHit, "Weapon: cannot decrease the number of enemies hit");
 
@@ -63,9 +58,7 @@ contract Weapon is Card {
         emit NewEnemiesHit(tokenId, newEnemiesHit);
     }
 
-    function update(uint256 tokenId, WeaponMutableParameters calldata parameters) public onlyRole(ROLE_OPERATOR) {
-        require(_mutableParameters[tokenId].level > 0, "Weapon: token with given ID does not exist");
-
+    function update(uint256 tokenId, WeaponMutableParameters calldata parameters) public onlyRole(ROLE_OPERATOR) tokenExists(tokenId) {
         WeaponMutableParameters storage params = _mutableParameters[tokenId];
         uint16 tokenType = _tokenIdToType[tokenId];
         
@@ -92,6 +85,10 @@ contract Weapon is Card {
 
     function tokenTypeImmutableCharacteristics(uint16 typeId) public view returns (WeaponImmutableParameters memory) {
         return _immutableParameters[typeId];
+    }
+
+    function getWeapon(uint256 tokenId) public view tokenExists(tokenId) returns (WeaponMutableParameters memory) {
+        return _mutableParameters[tokenId];
     }
 
     function _doSafeMint(uint256 tokenId) internal virtual override {
