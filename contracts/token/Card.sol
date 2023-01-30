@@ -4,12 +4,14 @@ pragma solidity 0.8.17;
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import { ERC721EnumerableUpgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
 import { CountersUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
+import { StringsUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 abstract contract Card is Initializable, AccessControlUpgradeable, ERC721EnumerableUpgradeable, UUPSUpgradeable {
 
+    using StringsUpgradeable for uint256;
     using CountersUpgradeable for CountersUpgradeable.Counter;
 
     CountersUpgradeable.Counter private _tokenIdCounter;
@@ -22,6 +24,11 @@ abstract contract Card is Initializable, AccessControlUpgradeable, ERC721Enumera
     mapping(uint256 => uint16) internal _tokenIdToType;
 
     event LevelUp(uint256 tokenId, uint8 newLevel);
+
+    modifier tokenExists(uint256 tokenId) {
+        _requireMinted(tokenId);
+        _;
+    }
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -36,6 +43,13 @@ abstract contract Card is Initializable, AccessControlUpgradeable, ERC721Enumera
         __UUPSUpgradeable_init_unchained();
 
         __Card_init_unchained();
+    }
+
+    function tokenURI(uint256 tokenId) public view virtual override returns (string memory) {
+        _requireMinted(tokenId);
+
+        string memory baseURI = _baseURI();
+        return bytes(baseURI).length > 0 ? string(abi.encodePacked(baseURI, tokenId.toString())) : "";
     }
 
     // solhint-disable-next-line func-name-mixedcase

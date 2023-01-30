@@ -95,7 +95,7 @@ describe('Character', () => {
 
         it('should revert if trying to level up the nonexistent token', async () => {
             await expect(cut.connect(operator).levelUp(2, EXPECTED_LEVEL))
-                .to.revertedWith("Character: token with given ID does not exist");
+                .to.revertedWith("ERC721: invalid token ID");
         });
     });
 
@@ -128,7 +128,7 @@ describe('Character', () => {
 
         it('should revert if trying to level up the nonexistent token', async () => {
             await expect(cut.connect(operator).levelUp(2, GAMES_PLAYED))
-                .to.revertedWith("Character: token with given ID does not exist");
+                .to.revertedWith("ERC721: invalid token ID");
         });
     });
 
@@ -176,7 +176,7 @@ describe('Character', () => {
 
         it('should revert if trying to update non-existent token', async () => {
             await expect(cut.connect(operator).update(2, {level: NEW_LEVEL, gamesPlayed: NEW_GAMES_PLAYED}))
-                .to.revertedWith("Character: token with given ID does not exist");
+                .to.revertedWith("ERC721: invalid token ID");
         });
     });
 
