@@ -28,6 +28,10 @@ contract Character is Card {
         __Card_init(name, symbol, metadataURI);
     }
 
+    function getCharacter(uint256 tokenId) public view returns (CharacterMutableParameters memory) {
+        return _mutableParameters[tokenId];
+    }
+
     function level(uint256 tokenId) public view tokenExists(tokenId) returns (uint8) {
         return _mutableParameters[tokenId].level;
     }

@@ -7,17 +7,13 @@ task("grantOperator", "Grants ROLE_OPERATOR on WEAPON and CHARACTER contracts to
   .addParam("weapon", "Weapon contract address")
   .addParam("character", "Character contract address")
   .addParam("grantee", "Account to which ROLE_OPERATOR will be granted")
-  .setAction(async (taskArgs: string[], hre: HardhatRuntimeEnvironment) => {
-  const [ characterContractAddress, weaponContractAddress, account ] = taskArgs
+  .setAction(async ({ character, weapon, grantee }, hre: HardhatRuntimeEnvironment) => {
   
-  await Promise.all(
-    [
-      hre.ethers.getContractAt("Weapon", weaponContractAddress)
-        .then(contract => contract.grantRole(ROLE_OPERATOR, account))
-        .then(_ => console.log(`Weapon: Granted ROLE_OPERATOR to ${ROLE_OPERATOR}`)),
-      hre.ethers.getContractAt("Character", characterContractAddress)
-        .then(contract => contract.grantRole(ROLE_OPERATOR, account))
-        .then(_ => console.log(`Character: Granted ROLE_OPERATOR to ${account}`))
-    ]
-  )
+    await hre.ethers.getContractAt("Weapon", weapon)
+      .then(contract => contract.grantRole(ROLE_OPERATOR, grantee))
+      .then(_ => console.log(`Weapon: Granted ROLE_OPERATOR to ${grantee}`))
+    await hre.ethers.getContractAt("Character", character)
+      .then(contract => contract.grantRole(ROLE_OPERATOR, grantee))
+      .then(_ => console.log(`Character: Granted ROLE_OPERATOR to ${grantee}`))
+
 });
