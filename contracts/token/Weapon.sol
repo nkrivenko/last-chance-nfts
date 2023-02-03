@@ -40,10 +40,10 @@ contract Weapon is Card {
     function levelUp(uint256 tokenId, uint8 newLevel) public onlyRole(ROLE_OPERATOR) tokenExists(tokenId) {
         WeaponMutableParameters storage params = _mutableParameters[tokenId];
 
-        uint16 tokenType = _tokenIdToType[tokenId];
+        uint16 passedTokenType = _tokenIdToType[tokenId];
 
         require(params.level < newLevel, "Weapon: cannot decrease level");
-        require(newLevel < _immutableParameters[tokenType].maxLevel, "Weapon: cannot exceed max level");
+        require(newLevel < _immutableParameters[passedTokenType].maxLevel, "Weapon: cannot exceed max level");
     
         params.level = newLevel;
         emit LevelUp(tokenId, newLevel);
@@ -60,10 +60,10 @@ contract Weapon is Card {
 
     function update(uint256 tokenId, WeaponMutableParameters calldata parameters) public onlyRole(ROLE_OPERATOR) tokenExists(tokenId) {
         WeaponMutableParameters storage params = _mutableParameters[tokenId];
-        uint16 tokenType = _tokenIdToType[tokenId];
+        uint16 passedTokenType = _tokenIdToType[tokenId];
         
         require(params.level < parameters.level, "Weapon: cannot decrease level");
-        require(parameters.level < _immutableParameters[tokenType].maxLevel, "Weapon: cannot exceed max level");
+        require(parameters.level < _immutableParameters[passedTokenType].maxLevel, "Weapon: cannot exceed max level");
         require(params.enemiesHit < parameters.enemiesHit, "Weapon: cannot decrease the number of enemies hit");
 
         params.level = parameters.level;
