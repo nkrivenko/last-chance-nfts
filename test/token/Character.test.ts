@@ -5,6 +5,7 @@ import { expect } from "chai";
 
 const ROLE_OPERATOR = '0xaa3edb77f7c8cc9e38e8afe78954f703aeeda7fffe014eeb6e56ea84e62f6da7';
 const DEFAULT_ADMIN_ROLE = '0x0000000000000000000000000000000000000000000000000000000000000000';
+const ROLE_MINTER = '0xaeaef46186eb59f884e36929b6d682a6ae35e1e43d8f05f058dcefb92b601461';
 
 describe('Character', () => {
     let cut: Contract;
@@ -12,6 +13,7 @@ describe('Character', () => {
     let admin: SignerWithAddress;
     let operator: SignerWithAddress;
     let tokenOwner: SignerWithAddress;
+    let minter: SignerWithAddress;
 
     const MAX_LEVEL = 40;
     const NAME = "Prime Games Character";
@@ -23,14 +25,15 @@ describe('Character', () => {
         cut = await ethers.getContractFactory("Character")
             .then(factory => upgrades.deployProxy(factory, [NAME, SYMBOL, METADATA_URI], {initializer: "initialize"}));
         
-        [ admin, operator, tokenOwner ] = await ethers.getSigners();
+        [ admin, operator, tokenOwner, minter ] = await ethers.getSigners();
 
         await cut.addNewTokenType(TOKEN_TYPE_ID, {name: "Sir Mullich", maxLevel: MAX_LEVEL, rarity: 0, activeSkill1: 'Speed +2', activeSkill2: 'Leadership', issueDate: +new Date()});
+        await cut.grantRole(ROLE_MINTER, minter.address);
 
         await Promise.all(
             [
                 cut.connect(admin).grantRole(ROLE_OPERATOR, operator.address), 
-                cut.safeMint(tokenOwner.address, TOKEN_TYPE_ID)
+                cut.connect(minter).safeMint(tokenOwner.address, TOKEN_TYPE_ID)
             ]
         )
     });
@@ -229,6 +232,57 @@ describe('Character', () => {
         it('should revert if called not by admin', async () => {
             await expect(cut.connect(tokenOwner).setBaseURI(NEW_BASE_URI)).to
                 .revertedWith(`AccessControl: account ${tokenOwner.address.toLowerCase()} is missing role ${DEFAULT_ADMIN_ROLE}`)
+        });
+    });
+
+    describe('Minting', () => {
+        it('should mint if caller has ROLE_MINTER', async () => {
+            const oldBalance = await cut.balanceOf(tokenOwner.getAddress());
+
+            await cut.connect(minter).safeMint(tokenOwner.address, 3);
+
+            const balanceDiff = (await cut.balanceOf(tokenOwner.getAddress())).sub(oldBalance);
+            expect(balanceDiff).to.be.equal(1);
+        });
+
+        it('should revert if caller does not have ROLE_MINTER', async () => {
+            await expect(cut.safeMint(tokenOwner.address, 3))
+                .to.be.revertedWith(`AccessControl: account ${admin.address.toLowerCase()} is missing role ${ROLE_MINTER}`);
+        });
+    });
+
+    describe('Multicall', () => {
+
+        const ABI = [ "function levelUp(uint256,uint8)", "function updateGamesPlayed(uint256,uint248)", "function safeMint(address,uint16)" ];
+        const iface = new ethers.utils.Interface(ABI)
+
+        it('should group multiple calls into one transaction', async () => {
+            const newLevel = 10;
+            const newGamesPlayed = 100;
+
+            const calls = [
+                iface.encodeFunctionData("levelUp", [1, newLevel]),
+                iface.encodeFunctionData("updateGamesPlayed", [1, newGamesPlayed]),
+            ];
+
+            await cut.connect(operator).multicall(calls);
+
+            expect(await cut.level(1)).to.eq(newLevel);
+            expect(await cut.gamesPlayed(1)).to.eq(newGamesPlayed);
+        });
+
+        it('should revert if no calls are passed', async () => {
+            await expect(cut.multicall([])).to.be.revertedWith("Card: empty calls");
+        });
+
+        it('should revert if a single call reverts', async () => {
+            const calls = [
+                iface.encodeFunctionData("levelUp", [1, 10]),
+                iface.encodeFunctionData("safeMint", [tokenOwner.address, 1])
+            ];
+
+            await expect(cut.connect(operator).multicall(calls)).to
+                .be.revertedWith(`AccessControl: account ${operator.address.toLowerCase()} is missing role ${ROLE_MINTER}`);
         });
     });
 });

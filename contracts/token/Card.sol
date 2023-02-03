@@ -64,6 +64,26 @@ abstract contract Card is Initializable, AccessControlUpgradeable, ERC721Enumera
         _metadataURI = newBaseURI;
     }
 
+    function multicall(bytes[] calldata data) external virtual returns (bytes[] memory results) {
+        require(data.length > 0, "Card: empty calls");
+
+        results = new bytes[](data.length);
+        for (uint256 i = 0; i < data.length; i++) {
+            results[i] = _funcDelegateCall(address(this), data[i]);
+        }
+        return results;
+    }
+
+    function safeMint(address to, uint16 cardType) public onlyRole(ROLE_MINTER) {
+        _tokenIdCounter.increment();
+        uint256 id = _tokenIdCounter.current();
+        _safeMint(to, id);
+
+        _tokenIdToType[id] = cardType;
+
+        _doSafeMint(id);
+    }
+
     /**
      * @dev See {IERC721-approve}.
      */
@@ -87,6 +107,14 @@ abstract contract Card is Initializable, AccessControlUpgradeable, ERC721Enumera
         // solhint-disable-previous-line no-empty-blocks
     }
 
+    function _funcDelegateCall(address target, bytes memory data) private returns (bytes memory) {
+        require(AddressUpgradeable.isContract(target), "Address: delegate call to non-contract");
+
+        // solhint-disable-next-line avoid-low-level-calls
+        (bool success, bytes memory returndata) = target.delegatecall(data);
+        return AddressUpgradeable.verifyCallResult(success, returndata, "Address: low-level delegate call failed");
+    }
+
     // The following functions are overrides required by Solidity.
 
     function supportsInterface(bytes4 interfaceId)
@@ -96,16 +124,6 @@ abstract contract Card is Initializable, AccessControlUpgradeable, ERC721Enumera
         returns (bool)
     {
         return super.supportsInterface(interfaceId);
-    }
-
-    function safeMint(address to, uint16 cardType) public onlyRole(ROLE_MINTER) {
-        _tokenIdCounter.increment();
-        uint256 id = _tokenIdCounter.current();
-        _safeMint(to, id);
-
-        _tokenIdToType[id] = cardType;
-
-        _doSafeMint(id);
     }
 
     function _doSafeMint(uint256 tokenId) internal virtual;
