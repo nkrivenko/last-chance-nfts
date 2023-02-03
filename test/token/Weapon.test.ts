@@ -4,6 +4,7 @@ import { ethers, upgrades } from "hardhat";
 import { expect } from "chai";
 
 const ROLE_OPERATOR = '0xaa3edb77f7c8cc9e38e8afe78954f703aeeda7fffe014eeb6e56ea84e62f6da7';
+const ROLE_MINTER = '0xaeaef46186eb59f884e36929b6d682a6ae35e1e43d8f05f058dcefb92b601461';
 const DEFAULT_ADMIN_ROLE = '0x0000000000000000000000000000000000000000000000000000000000000000';
 
 describe('Weapon', () => {
@@ -12,6 +13,7 @@ describe('Weapon', () => {
     let admin: SignerWithAddress;
     let operator: SignerWithAddress;
     let tokenOwner: SignerWithAddress;
+    let minter: SignerWithAddress;
 
     const MAX_LEVEL = 40;
     const NAME = "Prime Games Weapon";
@@ -24,14 +26,15 @@ describe('Weapon', () => {
         cut = await ethers.getContractFactory("Weapon")
             .then(factory => upgrades.deployProxy(factory, [NAME, SYMBOL, METADATA_URI], {initializer: "initialize"}));
         
-        [ admin, operator, tokenOwner ] = await ethers.getSigners();
+        [ admin, operator, tokenOwner, minter ] = await ethers.getSigners();
 
         await cut.addNewTokenType(TOKEN_TYPE_ID, {name: "First weapon", maxLevel: MAX_LEVEL, rarity: 0, improvementSlots: 1, issueDate: +new Date()});
+        await cut.grantRole(ROLE_MINTER, minter.address);
 
         await Promise.all(
             [
                 cut.connect(admin).grantRole(ROLE_OPERATOR, operator.address), 
-                cut.safeMint(tokenOwner.address, TOKEN_TYPE_ID)
+                cut.connect(minter).safeMint(tokenOwner.address, TOKEN_TYPE_ID)
             ]
         )
     });
@@ -227,6 +230,65 @@ describe('Weapon', () => {
         it('should revert if called not by admin', async () => {
             await expect(cut.connect(tokenOwner).setBaseURI(NEW_BASE_URI)).to
                 .revertedWith(`AccessControl: account ${tokenOwner.address.toLowerCase()} is missing role ${DEFAULT_ADMIN_ROLE}`)
+        });
+    });
+
+    describe('Minting', () => {
+        it('should mint if caller has ROLE_MINTER', async () => {
+            const oldBalance = await cut.balanceOf(tokenOwner.getAddress());
+
+            await cut.connect(minter).safeMint(tokenOwner.address, 3);
+
+            const balanceDiff = (await cut.balanceOf(tokenOwner.getAddress())).sub(oldBalance);
+            expect(balanceDiff).to.be.equal(1);
+        });
+
+        it('should revert if caller does not have ROLE_MINTER', async () => {
+            await expect(cut.safeMint(tokenOwner.address, 3))
+                .to.be.revertedWith(`AccessControl: account ${admin.address.toLowerCase()} is missing role ${ROLE_MINTER}`);
+        });
+    });
+
+    describe('Multicall', () => {
+        const ABI = [ "function levelUp(uint256,uint8)", "function updateEnemiesHit(uint256,uint248)", "function safeMint(address,uint16)" ];
+        const iface = new ethers.utils.Interface(ABI);
+
+        it('should group multiple calls into one transaction', async () => {
+            const newLevel = 10;
+            const newEnemiesHit = 100;
+
+            const calls = [
+                iface.encodeFunctionData("levelUp", [1, newLevel]),
+                iface.encodeFunctionData("updateEnemiesHit", [1, newEnemiesHit - 9]),
+                iface.encodeFunctionData("updateEnemiesHit", [1, newEnemiesHit - 8]),
+                iface.encodeFunctionData("updateEnemiesHit", [1, newEnemiesHit - 7]),
+                iface.encodeFunctionData("updateEnemiesHit", [1, newEnemiesHit - 6]),
+                iface.encodeFunctionData("updateEnemiesHit", [1, newEnemiesHit - 5]),
+                iface.encodeFunctionData("updateEnemiesHit", [1, newEnemiesHit - 4]),
+                iface.encodeFunctionData("updateEnemiesHit", [1, newEnemiesHit - 3]),
+                iface.encodeFunctionData("updateEnemiesHit", [1, newEnemiesHit - 2]),
+                iface.encodeFunctionData("updateEnemiesHit", [1, newEnemiesHit - 1]),
+                iface.encodeFunctionData("updateEnemiesHit", [1, newEnemiesHit])
+            ];
+
+            await cut.connect(operator).multicall(calls);
+
+            expect(await cut.level(1)).to.eq(newLevel);
+            expect(await cut.enemiesHit(1)).to.eq(newEnemiesHit);
+        });
+
+        it('should revert if no calls are passed', async () => {
+            await expect(cut.multicall([])).to.be.revertedWith("Card: empty calls");
+        });
+
+        it('should revert if a single call reverts', async () => {
+            const calls = [
+                iface.encodeFunctionData("levelUp", [1, 10]),
+                iface.encodeFunctionData("safeMint", [tokenOwner.address, 1])
+            ];
+
+            await expect(cut.connect(operator).multicall(calls)).to
+                .be.revertedWith(`AccessControl: account ${operator.address.toLowerCase()} is missing role ${ROLE_MINTER}`);
         });
     });
 });

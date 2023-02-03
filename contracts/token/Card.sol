@@ -20,6 +20,7 @@ abstract contract Card is Initializable, AccessControlUpgradeable, ERC721Enumera
 
     bytes32 internal constant ROLE_OPERATOR = keccak256("ROLE_OPERATOR");
     bytes32 internal constant ROLE_UPGRADER = keccak256("ROLE_UPGRADER");
+    bytes32 internal constant ROLE_MINTER = keccak256("ROLE_MINTER");
 
     mapping(uint256 => uint16) internal _tokenIdToType;
 
@@ -55,8 +56,32 @@ abstract contract Card is Initializable, AccessControlUpgradeable, ERC721Enumera
         return bytes(baseURI).length > 0 ? string(abi.encodePacked(baseURI, tokenIdType.toString(), ".json")) : "";
     }
 
+    function tokenType(uint256 tokenId) public view returns (uint16) {
+        return _tokenIdToType[tokenId];
+    }
+
     function setBaseURI(string calldata newBaseURI) public onlyRole(DEFAULT_ADMIN_ROLE) {
         _metadataURI = newBaseURI;
+    }
+
+    function multicall(bytes[] calldata data) external virtual returns (bytes[] memory results) {
+        require(data.length > 0, "Card: empty calls");
+
+        results = new bytes[](data.length);
+        for (uint256 i = 0; i < data.length; i++) {
+            results[i] = _funcDelegateCall(address(this), data[i]);
+        }
+        return results;
+    }
+
+    function safeMint(address to, uint16 cardType) public onlyRole(ROLE_MINTER) {
+        _tokenIdCounter.increment();
+        uint256 id = _tokenIdCounter.current();
+        _safeMint(to, id);
+
+        _tokenIdToType[id] = cardType;
+
+        _doSafeMint(id);
     }
 
     /**
@@ -74,14 +99,20 @@ abstract contract Card is Initializable, AccessControlUpgradeable, ERC721Enumera
         _metadataURI = metadataURI_;
     }
 
-
-
     function _authorizeUpgrade(address newImplementation)
         internal
         onlyRole(ROLE_UPGRADER)
         override 
     {
         // solhint-disable-previous-line no-empty-blocks
+    }
+
+    function _funcDelegateCall(address target, bytes memory data) private returns (bytes memory) {
+        require(AddressUpgradeable.isContract(target), "Address: delegate call to non-contract");
+
+        // solhint-disable-next-line avoid-low-level-calls
+        (bool success, bytes memory returndata) = target.delegatecall(data);
+        return AddressUpgradeable.verifyCallResult(success, returndata, "Address: low-level delegate call failed");
     }
 
     // The following functions are overrides required by Solidity.
@@ -93,16 +124,6 @@ abstract contract Card is Initializable, AccessControlUpgradeable, ERC721Enumera
         returns (bool)
     {
         return super.supportsInterface(interfaceId);
-    }
-
-    function safeMint(address to, uint16 tokenType) public {
-        _tokenIdCounter.increment();
-        uint256 id = _tokenIdCounter.current();
-        _safeMint(to, id);
-
-        _tokenIdToType[id] = tokenType;
-
-        _doSafeMint(id);
     }
 
     function _doSafeMint(uint256 tokenId) internal virtual;

@@ -9,6 +9,7 @@ import 'hardhat-storage-layout'
 import { resolve } from "path";
 
 import './tasks/grant_operator_role';
+import './tasks/fill_characters';
 
 dotenvConfig({ path: resolve(__dirname, "./.env") });
 
