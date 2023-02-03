@@ -43,10 +43,10 @@ contract Character is Card {
     function levelUp(uint256 tokenId, uint8 newLevel) public onlyRole(ROLE_OPERATOR) tokenExists(tokenId) {
         CharacterMutableParameters storage params = _mutableParameters[tokenId];
 
-        uint16 tokenType = _tokenIdToType[tokenId];
+        uint16 passedTokenType = _tokenIdToType[tokenId];
 
         require(params.level < newLevel, "Character: cannot decrease level");
-        require(newLevel < _immutableParameters[tokenType].maxLevel, "Character: cannot exceed max level");
+        require(newLevel < _immutableParameters[passedTokenType].maxLevel, "Character: cannot exceed max level");
     
         params.level = newLevel;
         emit LevelUp(tokenId, newLevel);
@@ -63,10 +63,10 @@ contract Character is Card {
 
     function update(uint256 tokenId, CharacterMutableParameters calldata parameters) public onlyRole(ROLE_OPERATOR) tokenExists(tokenId) {
         CharacterMutableParameters storage params = _mutableParameters[tokenId];
-        uint16 tokenType = _tokenIdToType[tokenId];
+        uint16 passedTokenType = _tokenIdToType[tokenId];
         
         require(params.level < parameters.level, "Character: cannot decrease level");
-        require(parameters.level < _immutableParameters[tokenType].maxLevel, "Character: cannot exceed max level");
+        require(parameters.level < _immutableParameters[passedTokenType].maxLevel, "Character: cannot exceed max level");
         require(params.gamesPlayed < parameters.gamesPlayed, "Character: cannot decrease the number of games played");
 
         params.level = parameters.level;

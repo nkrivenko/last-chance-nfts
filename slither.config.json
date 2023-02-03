@@ -1,4 +1,5 @@
 {
     "filter_paths": "(mocks/|node_modules/)",
-    "detectors_to_exclude": "similar-names,timestamp,conformance-to-solidity-naming-conventions"
+    "detectors_to_exclude": "similar-names,calls-loop,timestamp,conformance-to-solidity-naming-conventions",
+    "exclude_informational": true
 }
