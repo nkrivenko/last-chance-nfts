@@ -83,6 +83,19 @@ contract Weapon is Card {
         params.issueDate = typeParams.issueDate;
     }
 
+    function updateTokenType(uint16 typeId, WeaponImmutableParameters calldata typeParams) public onlyRole(DEFAULT_ADMIN_ROLE) {
+        WeaponImmutableParameters storage params = _immutableParameters[typeId];
+        require(params.issueDate > 0, "Weapon: token type is not initialized");
+
+        require(typeParams.maxLevel > 0, "Weapon: maxLevel should be positive");
+
+        params.name = typeParams.name;
+        params.maxLevel = typeParams.maxLevel;
+        params.rarity = typeParams.rarity;
+        params.improvementSlots = typeParams.improvementSlots;
+        params.issueDate = typeParams.issueDate;
+    }
+
     function tokenTypeImmutableCharacteristics(uint16 typeId) public view returns (WeaponImmutableParameters memory) {
         return _immutableParameters[typeId];
     }

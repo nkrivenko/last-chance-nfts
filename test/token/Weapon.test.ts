@@ -208,12 +208,32 @@ describe('Weapon', () => {
         });
 
         it('should revert if adding the characteristics to existent type', async () => {
-            await expect(cut.addNewTokenType(100, SECOND_WEAPON_CHARS))
+            await expect(cut.addNewTokenType(TOKEN_TYPE_ID, SECOND_WEAPON_CHARS))
                 .to.revertedWith("Weapon: token type is already initialized");
         });
 
         it('should revert if caller has no DEFAULT_ADMIN_ROLE role', async () => {
             await expect(cut.connect(operator).addNewTokenType(2, SECOND_WEAPON_CHARS))
+                .to.revertedWith(`AccessControl: account ${operator.address.toLowerCase()} is missing role ${DEFAULT_ADMIN_ROLE}`);
+        });
+
+        it('should allow to update type immutable characteristics to admin', async () => {
+            await cut.updateTokenType(TOKEN_TYPE_ID, SECOND_WEAPON_CHARS);
+            const tokenTypeCharacteristics = await cut.tokenTypeImmutableCharacteristics(TOKEN_TYPE_ID);
+
+            expect(tokenTypeCharacteristics["name"]).to.eq(NEW_WEAPON_CLASS_NAME);
+            expect(tokenTypeCharacteristics["maxLevel"]).to.eq(NEW_MAX_LEVEL);
+            expect(tokenTypeCharacteristics["rarity"]).to.eq(NEW_RARITY);
+            expect(tokenTypeCharacteristics["improvementSlots"]).to.eq(NEW_IMPROVEMENT_SLOTS);
+        });
+
+        it('should revert if updating the characteristics of non-existent type', async () => {
+            await expect(cut.updateTokenType(101, SECOND_WEAPON_CHARS))
+                .to.revertedWith("Weapon: token type is not initialized");
+        });
+
+        it('should revert if caller has no DEFAULT_ADMIN_ROLE role', async () => {
+            await expect(cut.connect(operator).updateTokenType(TOKEN_TYPE_ID, SECOND_WEAPON_CHARS))
                 .to.revertedWith(`AccessControl: account ${operator.address.toLowerCase()} is missing role ${DEFAULT_ADMIN_ROLE}`);
         });
     });

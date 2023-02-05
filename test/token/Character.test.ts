@@ -218,6 +218,28 @@ describe('Character', () => {
             await expect(cut.connect(operator).addNewTokenType(2, SECOND_CHARACTER_CHARS))
                 .to.revertedWith(`AccessControl: account ${operator.address.toLowerCase()} is missing role ${DEFAULT_ADMIN_ROLE}`);
         });
+
+        it('should allow to update type immutable characteristics to admin', async () => {
+            await cut.updateTokenType(TOKEN_TYPE_ID, SECOND_CHARACTER_CHARS);
+            const tokenTypeCharacteristics = await cut.tokenTypeImmutableCharacteristics(TOKEN_TYPE_ID);
+
+            expect(tokenTypeCharacteristics["name"]).to.eq(NEW_CHARACTER_CLASS_NAME);
+            expect(tokenTypeCharacteristics["issueDate"]).to.eq(ISSUE_DATE);
+            expect(tokenTypeCharacteristics["maxLevel"]).to.eq(NEW_MAX_LEVEL);
+            expect(tokenTypeCharacteristics["rarity"]).to.eq(NEW_RARITY);
+            expect(tokenTypeCharacteristics["activeSkill1"]).to.eq(NEW_ACTIVE_SKILL_1);
+            expect(tokenTypeCharacteristics["activeSkill2"]).to.eq(NEW_ACTIVE_SKILL_2);
+        });
+
+        it('should revert if updating the characteristics of non-existent type', async () => {
+            await expect(cut.updateTokenType(101, SECOND_CHARACTER_CHARS))
+                .to.revertedWith("Character: token type is not initialized");
+        });
+
+        it('should revert if caller has no DEFAULT_ADMIN_ROLE role', async () => {
+            await expect(cut.connect(operator).updateTokenType(TOKEN_TYPE_ID, SECOND_CHARACTER_CHARS))
+                .to.revertedWith(`AccessControl: account ${operator.address.toLowerCase()} is missing role ${DEFAULT_ADMIN_ROLE}`);
+        });
     });
 
     describe('Metadata URI changing', () => {

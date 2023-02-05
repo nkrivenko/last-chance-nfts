@@ -87,6 +87,20 @@ contract Character is Card {
         params.issueDate = typeParams.issueDate;
     }
 
+    function updateTokenType(uint16 typeId, CharacterImmutableParameters calldata typeParams) public onlyRole(DEFAULT_ADMIN_ROLE) {
+        CharacterImmutableParameters storage params = _immutableParameters[typeId];
+        require(params.issueDate > 0, "Character: token type is not initialized");
+
+        require(typeParams.maxLevel > 0, "Character: maxLevel should be positive");
+
+        params.name = typeParams.name;
+        params.maxLevel = typeParams.maxLevel;
+        params.rarity = typeParams.rarity;
+        params.activeSkill1 = typeParams.activeSkill1;
+        params.activeSkill2 = typeParams.activeSkill2;
+        params.issueDate = typeParams.issueDate;
+    }
+
     function tokenTypeImmutableCharacteristics(uint16 typeId) public view returns (CharacterImmutableParameters memory) {
         return _immutableParameters[typeId];
     }
