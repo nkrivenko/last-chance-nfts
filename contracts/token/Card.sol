@@ -3,24 +3,27 @@ pragma solidity 0.8.17;
 
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import { ERC721EnumerableUpgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
+import { ERC721BurnableUpgradeable, ERC721Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721BurnableUpgradeable.sol";
+import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import { CountersUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 import { StringsUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
-abstract contract Card is Initializable, AccessControlUpgradeable, ERC721EnumerableUpgradeable, UUPSUpgradeable {
+abstract contract Card is Initializable, AccessControlUpgradeable, ERC721EnumerableUpgradeable, ERC721BurnableUpgradeable, PausableUpgradeable, UUPSUpgradeable {
 
     using StringsUpgradeable for uint16;
     using CountersUpgradeable for CountersUpgradeable.Counter;
 
     CountersUpgradeable.Counter private _tokenIdCounter;
 
-    enum Rarity { COMMON, UNCOMMON, RARE, LEGENDARY, EPIC }
+    enum Rarity { COMMON, UNCOMMON, RARE, EPIC, LEGENDARY }
 
     bytes32 internal constant ROLE_OPERATOR = keccak256("ROLE_OPERATOR");
     bytes32 internal constant ROLE_UPGRADER = keccak256("ROLE_UPGRADER");
     bytes32 internal constant ROLE_MINTER = keccak256("ROLE_MINTER");
+    bytes32 internal constant ROLE_PAUSER = keccak256("ROLE_PAUSER");
 
     mapping(uint256 => uint16) internal _tokenIdToType;
 
@@ -41,11 +44,23 @@ abstract contract Card is Initializable, AccessControlUpgradeable, ERC721Enumera
     // solhint-disable-next-line func-name-mixedcase
     function __Card_init(string calldata name_, string calldata symbol_, string calldata metadataURI_) internal onlyInitializing {
         __ERC721_init_unchained(name_, symbol_);
+        __Pausable_init_unchained();
         __ERC721Enumerable_init_unchained();
+        __ERC721Burnable_init_unchained();
         __AccessControl_init_unchained();
         __UUPSUpgradeable_init_unchained();
 
         __Card_init_unchained(metadataURI_);
+    }
+
+    function multicall(bytes[] calldata data) external virtual returns (bytes[] memory results) {
+        require(data.length > 0, "Card: empty calls");
+
+        results = new bytes[](data.length);
+        for (uint256 i = 0; i < data.length; i++) {
+            results[i] = _funcDelegateCall(address(this), data[i]);
+        }
+        return results;
     }
 
     function tokenURI(uint256 tokenId) public view virtual override returns (string memory) {
@@ -64,14 +79,12 @@ abstract contract Card is Initializable, AccessControlUpgradeable, ERC721Enumera
         _metadataURI = newBaseURI;
     }
 
-    function multicall(bytes[] calldata data) external virtual returns (bytes[] memory results) {
-        require(data.length > 0, "Card: empty calls");
+    function pause() public onlyRole(ROLE_PAUSER) {
+        _pause();
+    }
 
-        results = new bytes[](data.length);
-        for (uint256 i = 0; i < data.length; i++) {
-            results[i] = _funcDelegateCall(address(this), data[i]);
-        }
-        return results;
+    function unpause() public onlyRole(ROLE_PAUSER) {
+        _unpause();
     }
 
     function safeMint(address to, uint16 cardType) public onlyRole(ROLE_MINTER) {
@@ -106,7 +119,6 @@ abstract contract Card is Initializable, AccessControlUpgradeable, ERC721Enumera
     {
         // solhint-disable-previous-line no-empty-blocks
     }
-
     function _funcDelegateCall(address target, bytes memory data) private returns (bytes memory) {
         require(AddressUpgradeable.isContract(target), "Address: delegate call to non-contract");
 
@@ -117,10 +129,18 @@ abstract contract Card is Initializable, AccessControlUpgradeable, ERC721Enumera
 
     // The following functions are overrides required by Solidity.
 
+    function _beforeTokenTransfer(address from, address to, uint256 tokenId, uint256 batchSize)
+        internal
+        whenNotPaused
+        override(ERC721Upgradeable, ERC721EnumerableUpgradeable)
+    {
+        super._beforeTokenTransfer(from, to, tokenId, batchSize);
+    }
+
     function supportsInterface(bytes4 interfaceId)
         public
         view
-        override(ERC721EnumerableUpgradeable, AccessControlUpgradeable)
+        override(ERC721EnumerableUpgradeable, ERC721Upgradeable, AccessControlUpgradeable)
         returns (bool)
     {
         return super.supportsInterface(interfaceId);

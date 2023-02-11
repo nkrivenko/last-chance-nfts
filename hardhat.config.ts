@@ -32,7 +32,7 @@ const config: HardhatUserConfig = {
     hardhat: {
     },
     mumbai: {
-      url: "https://rpc-mumbai.maticvigil.com",
+      url: "https://polygon-mumbai.blockpi.network/v1/rpc/public",
       accounts: [process.env.PRIVATE_KEY ?? '']
     },
     matic: {

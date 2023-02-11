@@ -6,7 +6,7 @@ import { Card } from "./Card.sol";
 contract Character is Card {
 
     struct CharacterImmutableParameters {
-        uint240 issueDate;
+        uint240 mintingEpoch;
         uint8 maxLevel;
         Rarity rarity;
         string name;
@@ -75,7 +75,7 @@ contract Character is Card {
 
     function addNewTokenType(uint16 typeId, CharacterImmutableParameters calldata typeParams) public onlyRole(DEFAULT_ADMIN_ROLE) {
         CharacterImmutableParameters storage params = _immutableParameters[typeId];
-        require(params.issueDate == 0, "Character: token type is already initialized");
+        require(params.maxLevel == 0, "Character: token type is already initialized");
 
         require(typeParams.maxLevel > 0, "Character: maxLevel should be positive");
 
@@ -84,12 +84,12 @@ contract Character is Card {
         params.rarity = typeParams.rarity;
         params.activeSkill1 = typeParams.activeSkill1;
         params.activeSkill2 = typeParams.activeSkill2;
-        params.issueDate = typeParams.issueDate;
+        params.mintingEpoch = typeParams.mintingEpoch;
     }
 
     function updateTokenType(uint16 typeId, CharacterImmutableParameters calldata typeParams) public onlyRole(DEFAULT_ADMIN_ROLE) {
         CharacterImmutableParameters storage params = _immutableParameters[typeId];
-        require(params.issueDate > 0, "Character: token type is not initialized");
+        require(params.maxLevel > 0, "Character: token type is not initialized");
 
         require(typeParams.maxLevel > 0, "Character: maxLevel should be positive");
 
@@ -98,7 +98,7 @@ contract Character is Card {
         params.rarity = typeParams.rarity;
         params.activeSkill1 = typeParams.activeSkill1;
         params.activeSkill2 = typeParams.activeSkill2;
-        params.issueDate = typeParams.issueDate;
+        params.mintingEpoch = typeParams.mintingEpoch;
     }
 
     function tokenTypeImmutableCharacteristics(uint16 typeId) public view returns (CharacterImmutableParameters memory) {
