@@ -5,6 +5,7 @@ import { expect } from "chai";
 
 const ROLE_OPERATOR = '0xaa3edb77f7c8cc9e38e8afe78954f703aeeda7fffe014eeb6e56ea84e62f6da7';
 const ROLE_MINTER = '0xaeaef46186eb59f884e36929b6d682a6ae35e1e43d8f05f058dcefb92b601461';
+const ROLE_PAUSER = '0x372d55e37651a7c6e1940a3fb8628e4b6122a3c1a8b2b70aee13e07228604567';
 const DEFAULT_ADMIN_ROLE = '0x0000000000000000000000000000000000000000000000000000000000000000';
 
 describe('Weapon', () => {
@@ -14,6 +15,7 @@ describe('Weapon', () => {
     let operator: SignerWithAddress;
     let tokenOwner: SignerWithAddress;
     let minter: SignerWithAddress;
+    let pauser: SignerWithAddress;
 
     const MAX_LEVEL = 40;
     const NAME = "Prime Games Weapon";
@@ -26,13 +28,14 @@ describe('Weapon', () => {
         cut = await ethers.getContractFactory("Weapon")
             .then(factory => upgrades.deployProxy(factory, [NAME, SYMBOL, METADATA_URI], {initializer: "initialize"}));
         
-        [ admin, operator, tokenOwner, minter ] = await ethers.getSigners();
+        [ admin, operator, tokenOwner, minter, pauser ] = await ethers.getSigners();
 
-        await cut.addNewTokenType(TOKEN_TYPE_ID, {name: "First weapon", maxLevel: MAX_LEVEL, rarity: 0, improvementSlots: 1, issueDate: +new Date()});
+        await cut.addNewTokenType(TOKEN_TYPE_ID, {name: "First weapon", maxLevel: MAX_LEVEL, rarity: 0, improvementSlots: 1, mintingEpoch: 0});
         await cut.grantRole(ROLE_MINTER, minter.address);
 
         await Promise.all(
             [
+                cut.connect(admin).grantRole(ROLE_PAUSER, pauser.address), 
                 cut.connect(admin).grantRole(ROLE_OPERATOR, operator.address), 
                 cut.connect(minter).safeMint(tokenOwner.address, TOKEN_TYPE_ID)
             ]
@@ -191,10 +194,10 @@ describe('Weapon', () => {
         const NEW_MAX_LEVEL = MAX_LEVEL - 2;
         const NEW_RARITY = 3;
         const NEW_IMPROVEMENT_SLOTS = 2;
-        const ISSUE_DATE = +new Date();
+        const MINTING_EPOCH = +new Date();
 
         const SECOND_WEAPON_CHARS = {name: NEW_WEAPON_CLASS_NAME, maxLevel: NEW_MAX_LEVEL, rarity: NEW_RARITY,
-            improvementSlots: NEW_IMPROVEMENT_SLOTS, issueDate: ISSUE_DATE};
+            improvementSlots: NEW_IMPROVEMENT_SLOTS, mintingEpoch: MINTING_EPOCH};
 
         it('should allow to add type immutable characteristics to admin', async () => {
             await cut.addNewTokenType(2, SECOND_WEAPON_CHARS);
@@ -203,17 +206,39 @@ describe('Weapon', () => {
 
             expect(tokenTypeCharacteristics["name"]).to.eq(NEW_WEAPON_CLASS_NAME);
             expect(tokenTypeCharacteristics["maxLevel"]).to.eq(NEW_MAX_LEVEL);
+            expect(tokenTypeCharacteristics["mintingEpoch"]).to.eq(MINTING_EPOCH);
             expect(tokenTypeCharacteristics["rarity"]).to.eq(NEW_RARITY);
             expect(tokenTypeCharacteristics["improvementSlots"]).to.eq(NEW_IMPROVEMENT_SLOTS);
         });
 
         it('should revert if adding the characteristics to existent type', async () => {
-            await expect(cut.addNewTokenType(100, SECOND_WEAPON_CHARS))
+            await expect(cut.addNewTokenType(TOKEN_TYPE_ID, SECOND_WEAPON_CHARS))
                 .to.revertedWith("Weapon: token type is already initialized");
         });
 
         it('should revert if caller has no DEFAULT_ADMIN_ROLE role', async () => {
             await expect(cut.connect(operator).addNewTokenType(2, SECOND_WEAPON_CHARS))
+                .to.revertedWith(`AccessControl: account ${operator.address.toLowerCase()} is missing role ${DEFAULT_ADMIN_ROLE}`);
+        });
+
+        it('should allow to update type immutable characteristics to admin', async () => {
+            await cut.updateTokenType(TOKEN_TYPE_ID, SECOND_WEAPON_CHARS);
+            const tokenTypeCharacteristics = await cut.tokenTypeImmutableCharacteristics(TOKEN_TYPE_ID);
+
+            expect(tokenTypeCharacteristics["name"]).to.eq(NEW_WEAPON_CLASS_NAME);
+            expect(tokenTypeCharacteristics["maxLevel"]).to.eq(NEW_MAX_LEVEL);
+            expect(tokenTypeCharacteristics["mintingEpoch"]).to.eq(MINTING_EPOCH);
+            expect(tokenTypeCharacteristics["rarity"]).to.eq(NEW_RARITY);
+            expect(tokenTypeCharacteristics["improvementSlots"]).to.eq(NEW_IMPROVEMENT_SLOTS);
+        });
+
+        it('should revert if updating the characteristics of non-existent type', async () => {
+            await expect(cut.updateTokenType(101, SECOND_WEAPON_CHARS))
+                .to.revertedWith("Weapon: token type is not initialized");
+        });
+
+        it('should revert if caller has no DEFAULT_ADMIN_ROLE role', async () => {
+            await expect(cut.connect(operator).updateTokenType(TOKEN_TYPE_ID, SECOND_WEAPON_CHARS))
                 .to.revertedWith(`AccessControl: account ${operator.address.toLowerCase()} is missing role ${DEFAULT_ADMIN_ROLE}`);
         });
     });
@@ -247,6 +272,13 @@ describe('Weapon', () => {
             await expect(cut.safeMint(tokenOwner.address, 3))
                 .to.be.revertedWith(`AccessControl: account ${admin.address.toLowerCase()} is missing role ${ROLE_MINTER}`);
         });
+
+        it('should revert if paused', async () => {
+            await cut.grantRole(ROLE_PAUSER, pauser.address);
+            await cut.connect(pauser).pause();
+
+            await expect(cut.connect(minter).safeMint(tokenOwner.address, 3)).to.be.revertedWith(`Pausable: paused`);
+        });
     });
 
     describe('Multicall', () => {
@@ -254,8 +286,8 @@ describe('Weapon', () => {
         const iface = new ethers.utils.Interface(ABI);
 
         it('should group multiple calls into one transaction', async () => {
-            const newLevel = 10;
-            const newEnemiesHit = 100;
+            const newLevel = 17;
+            const newEnemiesHit = 200;
 
             const calls = [
                 iface.encodeFunctionData("levelUp", [1, newLevel]),

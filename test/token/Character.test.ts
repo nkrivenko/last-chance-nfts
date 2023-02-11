@@ -5,6 +5,7 @@ import { expect } from "chai";
 
 const ROLE_OPERATOR = '0xaa3edb77f7c8cc9e38e8afe78954f703aeeda7fffe014eeb6e56ea84e62f6da7';
 const DEFAULT_ADMIN_ROLE = '0x0000000000000000000000000000000000000000000000000000000000000000';
+const ROLE_PAUSER = '0x372d55e37651a7c6e1940a3fb8628e4b6122a3c1a8b2b70aee13e07228604567';
 const ROLE_MINTER = '0xaeaef46186eb59f884e36929b6d682a6ae35e1e43d8f05f058dcefb92b601461';
 
 describe('Character', () => {
@@ -14,6 +15,7 @@ describe('Character', () => {
     let operator: SignerWithAddress;
     let tokenOwner: SignerWithAddress;
     let minter: SignerWithAddress;
+    let pauser: SignerWithAddress;
 
     const MAX_LEVEL = 40;
     const NAME = "Prime Games Character";
@@ -25,13 +27,14 @@ describe('Character', () => {
         cut = await ethers.getContractFactory("Character")
             .then(factory => upgrades.deployProxy(factory, [NAME, SYMBOL, METADATA_URI], {initializer: "initialize"}));
         
-        [ admin, operator, tokenOwner, minter ] = await ethers.getSigners();
+        [ admin, operator, tokenOwner, minter, pauser ] = await ethers.getSigners();
 
-        await cut.addNewTokenType(TOKEN_TYPE_ID, {name: "Sir Mullich", maxLevel: MAX_LEVEL, rarity: 0, activeSkill1: 'Speed +2', activeSkill2: 'Leadership', issueDate: +new Date()});
+        await cut.addNewTokenType(TOKEN_TYPE_ID, {name: "Sir Mullich", maxLevel: MAX_LEVEL, rarity: 0, activeSkill1: 'Speed +2', activeSkill2: 'Leadership', mintingEpoch: 0});
         await cut.grantRole(ROLE_MINTER, minter.address);
 
         await Promise.all(
             [
+                cut.connect(admin).grantRole(ROLE_PAUSER, pauser.address),
                 cut.connect(admin).grantRole(ROLE_OPERATOR, operator.address), 
                 cut.connect(minter).safeMint(tokenOwner.address, TOKEN_TYPE_ID)
             ]
@@ -191,10 +194,10 @@ describe('Character', () => {
         const NEW_RARITY = 3;
         const NEW_ACTIVE_SKILL_1 = 'Sharpshooters';
         const NEW_ACTIVE_SKILL_2 = 'Luck';
-        const ISSUE_DATE = +new Date();
+        const MINTING_EPOCH = 1;
 
         const SECOND_CHARACTER_CHARS = {name: NEW_CHARACTER_CLASS_NAME, maxLevel: NEW_MAX_LEVEL, rarity: NEW_RARITY,
-            activeSkill1: NEW_ACTIVE_SKILL_1, activeSkill2: NEW_ACTIVE_SKILL_2, issueDate: ISSUE_DATE};
+            activeSkill1: NEW_ACTIVE_SKILL_1, activeSkill2: NEW_ACTIVE_SKILL_2, mintingEpoch: MINTING_EPOCH};
 
         it('should allow to add type immutable characteristics to admin', async () => {
             await cut.addNewTokenType(2, SECOND_CHARACTER_CHARS);
@@ -202,7 +205,7 @@ describe('Character', () => {
             const tokenTypeCharacteristics = await cut.tokenTypeImmutableCharacteristics(2);
 
             expect(tokenTypeCharacteristics["name"]).to.eq(NEW_CHARACTER_CLASS_NAME);
-            expect(tokenTypeCharacteristics["issueDate"]).to.eq(ISSUE_DATE);
+            expect(tokenTypeCharacteristics["mintingEpoch"]).to.eq(MINTING_EPOCH);
             expect(tokenTypeCharacteristics["maxLevel"]).to.eq(NEW_MAX_LEVEL);
             expect(tokenTypeCharacteristics["rarity"]).to.eq(NEW_RARITY);
             expect(tokenTypeCharacteristics["activeSkill1"]).to.eq(NEW_ACTIVE_SKILL_1);
@@ -216,6 +219,28 @@ describe('Character', () => {
 
         it('should revert if caller has no DEFAULT_ADMIN_ROLE role', async () => {
             await expect(cut.connect(operator).addNewTokenType(2, SECOND_CHARACTER_CHARS))
+                .to.revertedWith(`AccessControl: account ${operator.address.toLowerCase()} is missing role ${DEFAULT_ADMIN_ROLE}`);
+        });
+
+        it('should allow to update type immutable characteristics to admin', async () => {
+            await cut.updateTokenType(TOKEN_TYPE_ID, SECOND_CHARACTER_CHARS);
+            const tokenTypeCharacteristics = await cut.tokenTypeImmutableCharacteristics(TOKEN_TYPE_ID);
+
+            expect(tokenTypeCharacteristics["name"]).to.eq(NEW_CHARACTER_CLASS_NAME);
+            expect(tokenTypeCharacteristics["mintingEpoch"]).to.eq(MINTING_EPOCH);
+            expect(tokenTypeCharacteristics["maxLevel"]).to.eq(NEW_MAX_LEVEL);
+            expect(tokenTypeCharacteristics["rarity"]).to.eq(NEW_RARITY);
+            expect(tokenTypeCharacteristics["activeSkill1"]).to.eq(NEW_ACTIVE_SKILL_1);
+            expect(tokenTypeCharacteristics["activeSkill2"]).to.eq(NEW_ACTIVE_SKILL_2);
+        });
+
+        it('should revert if updating the characteristics of non-existent type', async () => {
+            await expect(cut.updateTokenType(101, SECOND_CHARACTER_CHARS))
+                .to.revertedWith("Character: token type is not initialized");
+        });
+
+        it('should revert if caller has no DEFAULT_ADMIN_ROLE role', async () => {
+            await expect(cut.connect(operator).updateTokenType(TOKEN_TYPE_ID, SECOND_CHARACTER_CHARS))
                 .to.revertedWith(`AccessControl: account ${operator.address.toLowerCase()} is missing role ${DEFAULT_ADMIN_ROLE}`);
         });
     });
@@ -248,6 +273,13 @@ describe('Character', () => {
         it('should revert if caller does not have ROLE_MINTER', async () => {
             await expect(cut.safeMint(tokenOwner.address, 3))
                 .to.be.revertedWith(`AccessControl: account ${admin.address.toLowerCase()} is missing role ${ROLE_MINTER}`);
+        });
+
+        it('should revert if paused', async () => {
+            await cut.grantRole(ROLE_PAUSER, pauser.address);
+            await cut.connect(pauser).pause();
+
+            await expect(cut.connect(minter).safeMint(tokenOwner.address, 3)).to.be.revertedWith(`Pausable: paused`);
         });
     });
 
